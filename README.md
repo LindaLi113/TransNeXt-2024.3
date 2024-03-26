@@ -1,3 +1,26 @@
+# 注意
+
+## 在文章的 D.6 部分，当输入大小为 256*256、池大小为 4 且在所有四个阶段都使用聚合注意力时， sr_ratios 列表的设置是什么？
+
+以 transnext_micro 为例，您可以使用以下配置来实现一个池大小为 4、输入分辨率为 256 和在所有四个阶段都使用聚合注意力的模型：
+
+      def transnext_micro(pretrained=False, **kwargs):
+          model = TransNeXt(window_size=[3, 3, 3, 3],
+                            patch_size=4, embed_dims=[48, 96, 192, 384], num_heads=[2, 4, 8, 16],
+                            mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
+                            norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[2, 2, 15, 2], sr_ratios=[16, 8, 4, 2],
+                            **kwargs)
+          model.default_cfg = _cfg()
+
+          return model
+此外，您还需要调整模型中 relative_pos_index 和 relative_coords_table 的计算方法，具体如下：
+
+      relative_pos_index, relative_coords_table = get_relative_position_cpb(query_size=to_2tuple(img_size // (2 ** (i + 2))),
+                                                                            key_size=to_2tuple(img_size // ((2 ** (i + 2)) * sr_ratios[i])),
+                                                                            pretrain_size=to_2tuple(pretrain_size // (2 ** (i + 2))))
+
+这一更改是必要的，因为之前发布的版本默认池大小为输入图像大小的 1/32，而现在则设置为 1/64。
+
 # TransNeXt
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/transnext-robust-foveal-visual-perception-for/domain-generalization-on-imagenet-a)](https://paperswithcode.com/sota/domain-generalization-on-imagenet-a?p=transnext-robust-foveal-visual-perception-for)
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/transnext-robust-foveal-visual-perception-for/object-detection-on-coco-minival)](https://paperswithcode.com/sota/object-detection-on-coco-minival?p=transnext-robust-foveal-visual-perception-for)
